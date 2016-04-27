@@ -1,0 +1,7 @@
+riemann:
+  host: monitor-000-staging.mistsys.net
+  ttl : 300
+
+zookeeper:
+  host: ["zookeeper-000-staging.mistsys.net","zookeeper-001-staging.mistsys.net","zookeeper-002-staging.mistsys.net"]
+  port: 2181
