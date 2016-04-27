@@ -1,6 +1,6 @@
 # kafka-topics-broker
 
-The project collects the following three metrics from all the topics of kafka.
+The project collects the following three metrics from all the topics of kafka systems.
 
 1. kafka.topics.messages-in.MeanRate
 2. kafka.topics.bytes-in.MeanRate
