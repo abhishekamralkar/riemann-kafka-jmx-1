@@ -61,6 +61,20 @@
 
 
 
+(defn get-replica-count [ zkclient topic partition ]
+          (let [raw (String. (:data (zk/data zkclient (str "/brokers/topics/" topic ))) "UTF-8")
+                data (json/parse-string  raw) ]
+                (get-in data ["partitions" partition])))
+
+(defn get-isr-count [ zkclient topic partition ]
+          (let [raw (String. (:data (zk/data zkclient (str "/brokers/topics/" topic  "/partitions/" partition "/state"))) "UTF-8")
+                data (json/parse-string  raw) ]
+                (get data "isr")
+          ))
+
+
+
+
 (defn riemann-connect [ host ]
   (def rmnclnt (rmn/tcp-client {:host host})))
 
@@ -93,6 +107,8 @@
     (def bytes-in-description [ topic ])
     (def bytes-in-totalmetric 0)
 
+    (def  topic-replica-description [ topic ])
+
     (def bytes-out-description [ topic ])
     (def bytes-out-totalmetric 0)
 
@@ -110,6 +126,32 @@
       (let [ metric (try (get-bytes-out (get-partiton-leader-host zkclient topic partition) 9999 topic) (catch Exception e -100)) ]
       (def bytes-out-description (concat bytes-out-description [" Partition " partition " : Metric : "  (str metric)]))
       (def bytes-out-totalmetric (+ bytes-out-totalmetric metric)))
+
+
+      (let   [replicacount (count (get-replica-count zkclient topic partition))
+              isrcount     (count (get-isr-count zkclient topic partition))
+              replicadata  (get-isr-count zkclient topic partition)
+              isrdata      (get-isr-count zkclient topic partition)
+              ]
+      ;;(println topic)
+      ;;(println (str "Replica:" replicacount))
+      ;;(println (str "ISR:" isrcount))
+        (def topic-replica-state
+            (cond (< isrcount replicacount) "critical"
+            :else "ok"
+            )
+        )
+
+        (def topic-replica-metric
+          (cond  (< isrcount replicacount) -100
+            :else 0.0)
+          )
+
+        (def topic-replica-description (concat topic-replica-description (str " Partition : " partition " ,  Replicas : " replicadata " , ISR : " isrdata))
+          )
+
+      )
+
 
     )
 
@@ -144,6 +186,8 @@
          )]
       (riemann-send-event "kafka.topics.bytes-out.MeanRate" topic state bytes-out-totalmetric (apply str bytes-out-description) rmnttl)
   )
+
+  (riemann-send-event "kafka.topics.replication" topic topic-replica-state topic-replica-metric (apply str topic-replica-description )  300)
 
   )
 
